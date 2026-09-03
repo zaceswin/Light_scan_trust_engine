@@ -1,0 +1,21 @@
+{
+  "findings": [
+    {
+      "vuln_type": "sql_injection",
+      "url": "https://example-sacco.co.ke/login",
+      "parameter": "username",
+      "handles_pii_or_payment": true,
+      "is_authentication_endpoint": true,
+      "asset_criticality": 5,
+      "confidence": 0.99
+    },
+    {
+      "vuln_type": "xss_reflected",
+      "url": "https://example-sacco.co.ke/search",
+      "parameter": "q",
+      "requires_user_interaction": true,
+      "asset_criticality": 3,
+      "confidence": 0.95
+    }
+  ]
+}
