@@ -179,11 +179,26 @@ def _build_synthetic_training_set() -> tuple[np.ndarray, np.ndarray]:
 class TrustEngine:
     """Score and rank findings with deterministic, explainable output."""
 
-    def __init__(self, config: ScoringConfig | None = None) -> None:
+    def __init__(self, config: ScoringConfig | None = None, model_path: Path | str | None = None) -> None:
         self.config = config or ScoringConfig()
-        X, y = _build_synthetic_training_set()
-        self._model = LogisticRegression(random_state=42, max_iter=1000)
-        self._model.fit(X, y)
+        self._model = None
+
+        if model_path is not None:
+            model_path = Path(model_path)
+            if model_path.exists():
+                try:
+                    import joblib
+                    self._model = joblib.load(model_path)
+                    LOGGER.info("Loaded pre-trained calibrated model from %s", model_path)
+                except Exception as exc:
+                    LOGGER.warning("Failed to load model from %s: %s. Falling back to synthetic model.", model_path, exc)
+            else:
+                LOGGER.warning("Specified model file %s does not exist. Falling back to synthetic model.", model_path)
+
+        if self._model is None:
+            X, y = _build_synthetic_training_set()
+            self._model = LogisticRegression(random_state=42, max_iter=1000)
+            self._model.fit(X, y)
 
     def _exploit_likelihood(self, finding: Finding) -> float:
         model_likelihood = float(self._model.predict_proba(_features_from_finding(finding).reshape(1, -1))[0, 1])
@@ -283,6 +298,7 @@ def _load_findings(path: str) -> list[Finding]:
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Rank vulnerability findings by explainable trust score")
     parser.add_argument("input", nargs="?", help="JSON file containing findings; omit to run the demo")
+    parser.add_argument("--model-path", help="Path to a serialized scikit-learn model file (.joblib)")
     parser.add_argument("--output", choices=("text", "json"), default="text")
     parser.add_argument("--keep-duplicates", action="store_true")
     parser.add_argument("--verbose", action="store_true")
@@ -290,7 +306,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(levelname)s: %(message)s")
     try:
         findings = _load_findings(args.input) if args.input else demo_findings()
-        scored = TrustEngine().score_all(findings, deduplicate=not args.keep_duplicates)
+        scored = TrustEngine(model_path=args.model_path).score_all(findings, deduplicate=not args.keep_duplicates)
         if args.output == "json":
             print(json.dumps([item.to_dict() for item in scored], indent=2))
         else:
