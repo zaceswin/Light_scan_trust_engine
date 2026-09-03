@@ -78,3 +78,55 @@ LightScan Trust Engine (trust-scorer-py) project:
    3     
    4     # Process findings and output JSON
    5     python trust_scorer.py examples/findings.json --output json
+
+
+   ## Quick start
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python trust_scorer.py
+python trust_scorer.py examples/findings.json --output json
+```
+
+The JSON input may be a list or `{ "findings": [...] }`. A minimal finding is:
+
+```json
+{
+  "vuln_type": "sql_injection",
+  "url": "https://example.test/login",
+  "parameter": "username",
+  "asset_criticality": 5,
+  "handles_pii_or_payment": true,
+  "epss_score": 0.91,
+  "confidence": 0.98
+}
+```
+
+Supported types: `sql_injection`, `xss_stored`, `xss_reflected`,
+`open_redirect`, and `missing_security_header`.
+
+## Python API
+
+```python
+from trust_scorer import Finding, TrustEngine, VulnType
+
+result = TrustEngine().score(Finding(VulnType.SQLI, "https://example.test/login"))
+print(result.trust_score, result.tier, result.explanation)
+```
+
+`score_all()` deduplicates by vulnerability type, URL, and parameter by
+default. Pass `deduplicate=False` when every scanner observation is needed.
+`ScoringConfig` tunes tier thresholds for a team's risk appetite.
+
+## Production roadmap
+
+Replace synthetic labels with incident/remediation outcomes, calibrate the
+probabilities, and validate by time-split cross-validation. Enrich third-party
+findings with current CVSS vectors and EPSS values, add asset ownership and
+SLA data, and retain model/rule versions with every score for auditability.
+
+Run tests with `python -m pytest` after installing `requirements-dev.txt`.
+
+   
