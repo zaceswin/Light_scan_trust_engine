@@ -7,12 +7,12 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml requirements.txt ./
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-# If we had a proper package structure, this would be:
-# RUN pip install --no-cache-dir .
-# For now, we rely on the script being executable in the root
-ENTRYPOINT ["python", "trust_scorer.py"]
+RUN pip install --no-cache-dir .
+
+ENTRYPOINT ["trust-score"]
 CMD ["--help"]
